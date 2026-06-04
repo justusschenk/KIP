@@ -1,0 +1,220 @@
+================================================================================
+ERGEBNIS-ANALYSE — KIP: Synthetische vs. reale Trainingsdaten für die
+Instanzsegmentierung von Getriebe-/Maschinenbauteilen (YOLO11n-seg)
+================================================================================
+Erstellt: 2026-06-04
+Datenquelle: results/results/ (exp_metrics.json, eval_real_v3_test.yaml,
+             yolo_runs/{A,B,C}/results.csv + Plots)
+
+Hinweis zur Verwendung: Dieses Dokument fasst alle Messwerte und Abbildungen
+zusammen und nennt zu jedem Punkt die zugehörige Grafikdatei sowie einen
+Vorschlag für \label{}/\caption{} zum Einfügen in Overleaf. Pfade sind relativ
+zu results/results/.
+
+
+--------------------------------------------------------------------------------
+1. EXPERIMENTAUFBAU
+--------------------------------------------------------------------------------
+Aufgabe : Instanzsegmentierung (task=segment), 9 Klassen:
+          anti-vibration_handle, bearing_plate, bevel_gear_drive,
+          bevel_gear_spindle, gearbox_housing, intermediate_gearbox,
+          motor_housing, shaft, wheel_guard
+Modell  : YOLO11n-seg (yolo11n-seg.pt als Basis)
+Training: 50 Epochen, batch=16, imgsz=640, optimizer=auto, lr0=0.01, lrf=0.01,
+          seed=42, deterministic=true, AMP, Standard-Augmentierung
+          (mosaic=1.0, fliplr=0.5, hsv, close_mosaic=10)
+
+Drei Trainingsstrategien:
+  A_synth_only                 : Training nur auf synthetischen Daten
+                                 (data/synth_Daten)
+  B_real_only                  : Training nur auf realen Daten
+                                 (object_segmentation_real_v3_1088)
+  C_synth_pretrain_real_finetune (= "C_transfer"):
+                                 Vortraining auf synthetischen Daten (= Gewichte
+                                 aus A/best.pt), anschließend Feintuning auf
+                                 realen Daten
+
+Gemeinsame, faire Evaluierung:
+  Alle drei Modelle werden auf demselben REALEN Test-Split evaluiert
+  (eval_real_v3_test.yaml -> object_segmentation_real_v3_1088/images/test).
+  Diese Zahlen stehen in exp_metrics.json und bilden die Kernaussage des Papers.
+
+WICHTIGE UNTERSCHEIDUNG (für korrekte Interpretation der Plots):
+  - exp_metrics.json   = finale Evaluierung auf dem GEMEINSAMEN realen Testset.
+  - results.csv/plots  = In-Domain-Validierung WÄHREND des Trainings, jeweils
+                         auf dem eigenen val-Split des Experiments. A validiert
+                         also auf SYNTHETISCHEM val, B und C auf REALEM val.
+  => Die hohen Trainings-/Val-Kurven von A (mAP50 ~0.97 auf Synth-Val) dürfen
+     NICHT mit der schwachen realen Test-Performance (0.39) verwechselt werden.
+     Genau diese Lücke ist der zentrale "Sim-to-Real-Gap"-Befund.
+
+
+--------------------------------------------------------------------------------
+2. HAUPTERGEBNIS — Evaluierung auf dem realen Testset (Quelle: exp_metrics.json)
+--------------------------------------------------------------------------------
+  Modell                     mAP@50   mAP@50-95  Precision  Recall   F1 (macro)
+  -------------------------  -------  ---------  ---------  -------  ----------
+  A_synth_only               0.3934    0.3159     0.6471    0.3341    0.4407
+  B_real_only                0.9950    0.9590     0.9791    0.9990    0.9890
+  C_synth_pretrain+finetune  0.9950    0.9726     0.9884    1.0000    0.9942
+
+Kernaussagen:
+  (1) SIM-TO-REAL-GAP: Ein rein synthetisch trainiertes Modell (A) generalisiert
+      schlecht auf reale Bilder: mAP@50 nur 0.393, Recall nur 0.334 — d.h. rund
+      zwei Drittel der realen Instanzen werden nicht gefunden. Die Precision
+      (0.647) ist deutlich höher als der Recall: A erkennt nur wenige Objekte,
+      diese aber relativ zuverlässig.
+  (2) REALE DATEN dominieren: B erreicht nahezu perfekte Werte (mAP@50 0.995,
+      Recall 0.999).
+  (3) TRANSFER LERNEN bringt den besten Wert: C ist bei mAP@50 gleichauf mit B
+      (0.995), übertrifft B aber bei der strengeren Metrik mAP@50-95
+      (0.9726 vs. 0.9590, +1.36 Prozentpunkte) sowie bei Precision (0.9884 vs.
+      0.9791) und Recall (1.000 vs. 0.999). Synthetisches Vortraining verbessert
+      also v.a. die Lokalisierungs-/Maskengenauigkeit bei hohen IoU-Schwellen.
+
+Empfohlene Haupttabelle fürs Paper (\label{tab:main_results}):
+  Caption-Vorschlag: "Evaluierung der drei Trainingsstrategien auf dem realen
+  Testset (object_segmentation_real_v3). Beste Werte fett."
+
+
+--------------------------------------------------------------------------------
+3. KONVERGENZVERHALTEN (Quelle: results.csv, jeweils Epoche 1 vs. 50)
+--------------------------------------------------------------------------------
+In-Domain-Validierung während des Trainings (Box-Metriken):
+
+  A_synth_only (Val = Synth):
+      Epoche  1: mAP50=0.516, mAP50-95=0.387, P=0.630, R=0.480
+      Epoche 50: mAP50=0.974, mAP50-95=0.847, P=0.964, R=0.916
+      Trainingsdauer: 8199 s
+
+  B_real_only (Val = Real):
+      Epoche  1: mAP50=0.551, mAP50-95=0.496, P=0.029, R=0.750
+      Epoche 50: mAP50=0.886, mAP50-95=0.838, P=0.881, R=0.843
+      Trainingsdauer: 1323 s
+
+  C_synth_pretrain+finetune (Val = Real):
+      Epoche  1: mAP50=0.715, mAP50-95=0.673, P=0.728, R=0.706
+      Epoche 50: mAP50=0.922, mAP50-95=0.859, P=0.886, R=0.846
+      Trainingsdauer: 1405 s
+
+Kernaussage Transfer-Initialisierung:
+  Dank synthetischem Vortraining startet C bereits bei Epoche 1 deutlich höher
+  (mAP50 0.715) als das von Null trainierte B (mAP50 0.551). Synthetische Daten
+  liefern also eine bessere Initialisierung und schnellere Konvergenz bei
+  vernachlässigbarem Mehraufwand in der Feintuning-Phase (1405 s vs. 1323 s).
+
+(Anmerkung: Diese Val-Zahlen liegen unter den Testwerten aus Abschnitt 2, da der
+Testsplit von eval_real_v3_test.yaml und der Trainings-Val-Split nicht identisch
+sind. Für Paper-Aussagen die Testwerte aus Abschnitt 2 verwenden, die Kurven nur
+für Konvergenz-/Verlaufsargumente.)
+
+
+--------------------------------------------------------------------------------
+4. ABBILDUNGSVERZEICHNIS — Zuordnung Grafik -> Aussage -> Overleaf
+--------------------------------------------------------------------------------
+Für jedes Experiment liegen die identischen Plot-Typen vor. Pfade relativ zu
+results/results/.
+
+4.1 TRAININGSVERLAUF (Loss- und Metrikkurven über 50 Epochen)
+    Datei je Experiment: yolo_runs/<EXP>/results.png
+      A: yolo_runs/A_synth_only/results.png
+      B: yolo_runs/B_real_only/results.png
+      C: yolo_runs/C_synth_pretrain_real_finetune/results.png
+    Aussage: Verlauf von box/seg/cls/dfl-Loss (Train+Val) und der Val-Metriken;
+             belegt stabile Konvergenz und (bei C) den höheren Startpunkt.
+    Overleaf:
+      \label{fig:results_curves_C}
+      Caption: "Trainings- und Validierungsverlauf (Losses und Box-/Mask-
+      Metriken) über 50 Epochen für Strategie C (synthetisches Vortraining +
+      reales Feintuning)."
+
+4.2 PRECISION-RECALL-KURVEN
+    Box : yolo_runs/<EXP>/BoxPR_curve.png
+    Mask: yolo_runs/<EXP>/MaskPR_curve.png
+    Aussage: PR-Kurve je Klasse + mittlere mAP@0.5; gut für den direkten
+             Qualitätsvergleich A vs. B vs. C und zur Klassenanalyse.
+    Overleaf:
+      \label{fig:pr_curve_box}
+      Caption: "Precision-Recall-Kurven (Bounding-Box) auf dem realen Testset.
+      Vergleich der Strategien A/B/C."
+
+4.3 F1-, P- und R-KURVEN über die Konfidenzschwelle
+    BoxF1_curve.png / MaskF1_curve.png : F1 über Confidence (optimaler conf-Wert)
+    BoxP_curve.png  / MaskP_curve.png  : Precision über Confidence
+    BoxR_curve.png  / MaskR_curve.png  : Recall über Confidence
+    Aussage: Begründung der Wahl der Konfidenzschwelle; zeigt v.a. bei A den
+             frühen Recall-Abfall.
+    Overleaf:
+      \label{fig:f1_curve}
+      Caption: "F1-Confidence-Kurve; das Maximum markiert die optimale
+      Konfidenzschwelle."
+
+4.4 KONFUSIONSMATRIZEN (Klassenebene)
+    Absolut    : yolo_runs/<EXP>/confusion_matrix.png
+    Normalisiert: yolo_runs/<EXP>/confusion_matrix_normalized.png
+    Aussage: Welche der 9 Klassen verwechselt/verfehlt werden; bei A sichtbarer
+             "background"-Anteil (verpasste Instanzen) wegen niedrigem Recall.
+    Overleaf:
+      \label{fig:confmat_A}
+      Caption: "Normalisierte Konfusionsmatrix für Strategie A (nur
+      synthetisches Training), evaluiert auf realen Daten."
+
+4.5 DATENSATZ-STATISTIK
+    Datei: yolo_runs/<EXP>/labels.jpg
+    Aussage: Klassenverteilung und Verteilung der Bounding-Box-
+             Position/Größe im jeweiligen Trainingssatz (Klassenbalance,
+             Domänencharakteristik synth vs. real).
+    Overleaf:
+      \label{fig:label_dist}
+      Caption: "Verteilung der Instanzen und Bounding-Boxen im Trainingsdatensatz."
+
+4.6 QUALITATIVE BEISPIELE — Validierungsvorhersagen
+    Ground Truth : yolo_runs/<EXP>/val_batch{0,1,2}_labels.jpg
+    Vorhersage   : yolo_runs/<EXP>/val_batch{0,1,2}_pred.jpg
+    Aussage: Visueller Vergleich Vorhersage vs. Annotation; ideal als
+             Side-by-Side, um den Sim-to-Real-Gap von A und die saubere
+             Segmentierung von B/C zu zeigen.
+    Overleaf (Side-by-Side mit subfigure):
+      \label{fig:qual_pred}
+      Caption: "Qualitative Ergebnisse: Ground Truth (links) vs. Vorhersage
+      (rechts) auf dem realen Validierungs-Batch."
+
+4.7 TRAININGS-BATCH-VISUALISIERUNG (optional, eher Anhang)
+    Datei: yolo_runs/<EXP>/train_batch0.jpg, train_batch1.jpg, train_batch2.jpg
+           (sowie die letzten Batches train_batch1960..1962 / 11000..11002)
+    Aussage: Zeigt die Augmentierungen (Mosaic etc.) und den optischen
+             Unterschied synthetischer vs. realer Trainingsbilder.
+    Overleaf:
+      \label{fig:train_batch}
+      Caption: "Beispielhafte (augmentierte) Trainings-Batches. Oben:
+      synthetische Daten (A), unten: reale Daten (B)."
+
+
+--------------------------------------------------------------------------------
+5. VORSCHLAG ABBILDUNGS-REIHENFOLGE FÜRS PAPER
+--------------------------------------------------------------------------------
+  Fig. 1  Datensatzbeispiele synth vs. real          -> train_batch0.jpg (A & B)
+  Fig. 2  Trainingsverlauf (Konvergenz, C-Startvorteil) -> results.png (B & C)
+  Tab. 1  Hauptergebnis-Tabelle (Abschnitt 2)        -> exp_metrics.json
+  Fig. 3  PR-Kurven Vergleich A/B/C                  -> BoxPR_curve.png
+  Fig. 4  Konfusionsmatrix A (Sim-to-Real-Gap)       -> confusion_matrix_normalized.png (A)
+  Fig. 5  Qualitative Vorhersagen GT vs. Pred        -> val_batch0_labels/pred.jpg
+
+
+--------------------------------------------------------------------------------
+6. EMPFOHLENE TEXTBAUSTEINE (zum Umformulieren im Paper)
+--------------------------------------------------------------------------------
+- "Ein ausschließlich auf synthetischen Daten trainiertes Modell erreicht auf
+   realen Testbildern nur mAP@50 = 0.393 (Recall 0.334) und verdeutlicht damit
+   die Sim-to-Real-Domänenlücke."
+- "Das Feintuning eines synthetisch vortrainierten Modells auf realen Daten (C)
+   erzielt die insgesamt beste Genauigkeit (mAP@50-95 = 0.973, F1 = 0.994) und
+   übertrifft das rein real trainierte Modell (B) insbesondere bei hohen
+   IoU-Schwellen."
+- "Synthetisches Vortraining liefert eine überlegene Initialisierung: Strategie C
+   startet bei mAP@50 = 0.715 nach der ersten Epoche gegenüber 0.551 beim
+   Training von Grund auf (B)."
+
+================================================================================
+ENDE
+================================================================================

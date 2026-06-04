@@ -1,0 +1,14 @@
+path: /workspace/blum/KIP/data/object_segmentation_real_v3_1088
+train: images/train
+val: images/test
+nc: 9
+names:
+  0: anti-vibration_handle
+  1: bearing_plate
+  2: bevel_gear_drive
+  3: bevel_gear_spindle
+  4: gearbox_housing
+  5: intermediate_gearbox
+  6: motor_housing
+  7: shaft
+  8: wheel_guard
