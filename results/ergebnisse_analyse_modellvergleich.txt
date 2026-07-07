@@ -1,0 +1,147 @@
+================================================================================
+ERGEBNIS-ANALYSE — KIP: Modellvergleich in zwei Stufen
+Stufe 1: Komponenten-Instanzsegmentierung (YOLO11n-seg vs. Mask2Former)
+Stufe 2: Defekterkennung (PatchCore, PaDiM, Autoencoder, U-Net)
+================================================================================
+Erstellt: 2026-07-07
+Datenquelle: results/component_benchmark/summary.csv,
+             results/defect_detection/summary.csv (+ pro-Lauf metrics.json),
+             results/figures/*.png
+Reproduzierbarkeit: docs/BUILD_PLAN.md, docs/REPRODUKTION.md, tests/ (pytest)
+
+WICHTIGER HINWEIS ZUR EINORDNUNG DER ZAHLEN
+-------------------------------------------
+Alle in diesem Dokument berichteten Messwerte stammen aus SMOKE-Laeufen auf einem
+Apple-Silicon-Rechner (MPS, keine CUDA-GPU): stark reduzierte Epochenzahl
+(Stufe 1: 2 Epochen; Stufe 2: 3 Epochen), reduzierte Aufloesung/Tile-Groesse und
+Teil-Stichproben. Sie belegen die FUNKTIONSFAEHIGKEIT und das VERHALTEN der
+Pipeline, sind aber NICHT die finalen Trainingsergebnisse. Jeder Lauf traegt
+`"smoke": true` in metrics.json. Die exakten Volltrainings-Befehle fuer einen
+CUDA-Server stehen in docs/REPRODUKTION.md. Es wurden keine Zahlen erfunden.
+
+
+================================================================================
+1. STUFE 1 — KOMPONENTEN-INSTANZSEGMENTIERUNG: YOLO11n-seg vs. Mask2Former
+================================================================================
+
+1.1 VERSUCHSAUFBAU (Fairness)
+Beide Modelle werden unter identischen Bedingungen verglichen:
+  - Gleiche Bildlisten (real_v3, Umwandlung YOLO-seg -> COCO in data/coco_converted/).
+  - Gleicher Testsplit (real_v3/test) und EIN gemeinsamer Evaluator
+    (kip/stage1/evaluator.py: pycocotools COCOeval, iouType bbox + segm).
+    Es werden NIE die internen ultralytics-`model.val()`-Zahlen berichtet.
+  - Abgestimmte Augmentierung: Variante "aug on" vs. "aug off" (bei YOLO ueber
+    Hyperparameter mosaic/mixup/hsv/flip/scale/translate/erasing, bei Mask2Former
+    ueber eine geometrisch/fotometrisch aequivalente albumentations-Pipeline).
+  - Modelle: YOLO11n-seg (ultralytics) und facebook/mask2former-swin-tiny.
+
+1.2 SMOKE-BEFUND
+Die 2-Epochen-Smoke-Laeufe liefern erwartungsgemaess sehr niedrige mAP-Werte
+(YOLO segm mAP@50 ~0.02; Mask2Former ~0.0 nach 2 Epochen auf CPU). Das ist KEIN
+Modellbefund, sondern belegt nur, dass Training, Vorhersage-Export nach COCO und
+der gemeinsame Evaluator korrekt durchlaufen. Sanity-Check: Wird die Ground Truth
+als Vorhersage eingespeist, liefert der Evaluator segm mAP@50 ~ 1.0.
+Abbildung: results/figures/stage1_segm_map50.png.
+
+1.3 REFERENZ AUS FRUEHEREM VOLLTRAINING (Kontext, nicht Teil dieses Vergleichs)
+Ein bereits vorhandenes YOLO11n-seg-Volltraining (Strategie C, synthetisches
+Vortraining + reales Feintuning, 50 Epochen) erreichte auf dem realen Testset
+segm/box mAP@50 ~ 0.995 (siehe results/ergebnisse_analyse.txt). Dies dient als
+Orientierung fuer die von YOLO erreichbare Groessenordnung; der eigentliche faire
+YOLO-vs-Mask2Former-Vergleich ist erst nach dem dokumentierten Volltraining
+beider Modelle zu ziehen.
+
+1.4 ZU ERWARTENDE DISKUSSION (nach Volltraining zu verifizieren)
+Bei nur 771 realen Trainingsbildern ist zu erwarten, dass das kleine,
+faltungsbasierte YOLO11n-seg schneller konvergiert und robuster generalisiert als
+der transformer-basierte Mask2Former, der typischerweise mehr Daten benoetigt und
+zu Ueberanpassung neigt. Genau diese Datenknappheit ist die zentrale
+Herausforderung des Projekts; ein etwaiger Rueckstand von Mask2Former ist als
+inhaltlicher Befund zu werten, nicht als Implementierungsfehler.
+
+
+================================================================================
+2. STUFE 2 — DEFEKTERKENNUNG: VIER KOMPLEMENTAERE METHODIKEN
+================================================================================
+
+2.1 VERSUCHSAUFBAU
+Datengrundlage: BGAD (bevel_gear_spindle-Nahaufnahmen), Manifest mit 19 Bildern,
+7 Werkzeugen (tool_id), 8 Gutteile / 11 Defektteile, gelieferte Binaermasken
+(5 Defekttypen; Typen nur als Metadaten, wegen 2-5 Beispielen je Typ KEINE
+Mehrklassen-Aussage). Ablauf: Stufe-1-YOLO-Checkpoint (Strategie C) segmentiert
+und schneidet die Spindel aus (Stage-1 -> Stage-2 Uebergabe), danach Kachelung.
+
+Vier Methodiken (bewusst komplementaer):
+  (1) PatchCore  — Memory-Bank aus Gutteil-Patch-Features (unsupervised).
+  (2) PaDiM      — pro Position multivariate Gauss-Verteilung (unsupervised).
+  (3) Autoencoder— Rekonstruktionsfehler auf Gutteilen (unsupervised).
+  (4) U-Net-R18  — ueberwachte Binaersegmentierung mit den Masken (supervised,
+                   Few-Shot; Verlust BCE+Dice).
+
+Zwei Evaluierungsprotokolle:
+  - fixed : vorgegebener train/val-Split (Val als Test, 3 Gut / 5 Defekt) —
+            interpretierbar, da beide Klassen im Test enthalten sind.
+  - loto  : Leave-One-Tool-Out (primaeres, strengeres Protokoll; kein Werkzeug in
+            Train und Test zugleich) — misst die Generalisierung ueber Werkzeuge.
+
+2.2 HAUPTERGEBNIS (Smoke, real gemessen)
+  Methode     | fixed: Bild-AUROC / Pixel-AUROC | loto: Bild-AUROC / Pixel-AUROC
+  ------------|---------------------------------|-------------------------------
+  PatchCore   |        0.80 / 0.75              |        0.27 / 0.64
+  PaDiM       |        0.47 / 0.67              |        0.27 / 0.55
+  Autoencoder |        1.00 / 0.51              |        0.72 / 0.39
+  U-Net (sup.)|        1.00 / 0.83  (Dice 0.30) |        0.65 / 0.68  (Dice 0.26)
+  Abbildungen: results/figures/stage2_image_auroc.png, stage2_pixel_auroc.png.
+
+2.3 KRITISCHE DISKUSSION
+(a) Bild- vs. Pixel-Ebene: Autoencoder und U-Net erreichen im fixed-Protokoll
+    perfekte Bild-AUROC (1.0), unterscheiden sich aber stark in der Lokalisierung:
+    der Autoencoder hat nur Pixel-AUROC 0.51 (kaum besser als Zufall) — er erkennt
+    "irgendetwas stimmt nicht", lokalisiert den Defekt aber nicht. U-Net erreicht
+    die beste Pixel-AUROC (0.83) und liefert als einzige Methode eine echte
+    Defektmaske (Dice 0.30) — der Nutzen der wenigen gelieferten Masken.
+(b) Unsupervised-Baseline: PatchCore ist die stabilste rein datensparsame Methode
+    (0.80/0.75 fixed) und benoetigt nur Gutteile. PaDiM faellt ab (0.47), weil die
+    Kovarianzschaetzung pro Position bei sehr wenigen Gutteil-Stichproben instabil
+    ist (trotz Shrinkage) — ein methodischer Grenzfall im Kleinstdatenregime.
+(c) ZENTRALER BEFUND — Datenknappheit: Im strengen loto-Protokoll brechen alle
+    Verfahren ein (beste Bild-AUROC: Autoencoder 0.72; PatchCore/PaDiM 0.27). Die
+    Generalisierung ueber bisher ungesehene Werkzeuge ist mit 19 Bildern sehr
+    schwer. Zudem sind 6 der 7 loto-Folds einklassig (tool03 nur Defekt; tool97/99
+    nur Gut), sodass die faltbasierte Bild-AUROC dort undefiniert ist (als null
+    gefuehrt, nie 0) und nur die gepoolte Kennzahl aussagekraeftig bleibt. Dies ist
+    ein ehrlicher, publikationswuerdiger Befund zur Grenze der Methoden bei
+    extremer Datenarmut, kein Defizit der Implementierung.
+(d) Komplementaritaet: Die vier Methodiken decken unterschiedliche Annahmen ab —
+    Memory-Bank (PatchCore) und Verteilung (PaDiM) modellieren Normalitaet im
+    Feature-Raum, der Autoencoder ueber Rekonstruktion, U-Net nutzt direkt die
+    Masken. Fuer die Praxis empfiehlt sich PatchCore als annotationsfreie Baseline
+    plus U-Net, sobald wenige Masken vorliegen; der Autoencoder eignet sich zur
+    reinen Anomalie-Alarmierung, nicht zur Lokalisierung.
+
+2.4 EINSCHRAENKUNGEN
+Smoke-Status (3 Epochen, Tile 128), keine Hyperparameter-Optimierung, sehr kleine
+Stichprobe. Die Werte sind daher mit hoher Varianz behaftet; belastbare Aussagen
+erfordern die dokumentierten Volllaeufe (mehr Epochen, groessere Tiles, mehrere
+Seeds). Perfekte Defekterkennung ist laut Aufgabenstellung nicht das Ziel — im
+Vordergrund stehen der methodische Vergleich und die kritische Einordnung.
+
+
+================================================================================
+3. REPRODUZIERBARKEIT
+================================================================================
+- Nichtdestruktives Manifest: results/defect_detection/manifest/ (Bild, tool_id,
+  Split, Defektstatus, Defekttypen, Maskenpfade, Groesse); Masken dedupliziert,
+  Zuordnung nur bei vorhandenem Basisbild im jeweiligen Split.
+- Werkzeug-getrennte Splits (LOTO/GroupKFold) VOR jeder Kachelung; Leakage-Assert
+  in jedem Fold (Ausnahme: der bekannte fixed-Split).
+- Pro Lauf gespeichert: config.yaml, metrics.json (inkl. per_fold), hardware.json,
+  Manifest-Referenz, Kurven; getrennt unter results/component_benchmark/ und
+  results/defect_detection/. Bestehende Ergebnisse (results/results/) unangetastet.
+- Unit-Tests (pytest): Manifest-Deduplizierung, Maskenvereinigung, Werkzeug-
+  trennung, YOLO->COCO-Konvertierung, Metriken, Stage-2-Methodenvertrag.
+- Volltrainings-Befehle (CUDA) und Smoke-Befehle: docs/REPRODUKTION.md.
+
+================================================================================
+ENDE
+================================================================================

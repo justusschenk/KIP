@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "run_id": "yolo_augon_20260706_210225",
+  "stage": 1,
+  "model": "yolo",
+  "augmentation": true,
+  "seed": 42,
+  "smoke": true,
+  "device": "mps",
+  "split": {
+    "scheme": "fixed",
+    "n_folds": 1,
+    "test_set": "real_v3/test"
+  },
+  "dataset": {
+    "n_train": 771,
+    "n_val": 101,
+    "n_test": 90,
+    "n_good": 0,
+    "n_defect": 0,
+    "n_tiles_train": 0,
+    "n_tiles_test": 0,
+    "missing_mask_policy": "normal",
+    "crop_failures": 0
+  },
+  "runtime": {
+    "train_seconds": 103.9,
+    "infer_ms_per_image": 29.68
+  },
+  "metrics": {
+    "bbox_map50": 0.0,
+    "bbox_map50_95": 0.0,
+    "segm_map50": 0.0,
+    "segm_map50_95": 0.0,
+    "segm_map75": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "per_class": {
+      "anti-vibration_handle": {
+        "segm_ap50": 0.0,
+        "segm_ap50_95": 0.0
+      },
+      "bearing_plate": {
+        "segm_ap50": 0.0,
+        "segm_ap50_95": 0.0
+      },
+      "bevel_gear_drive": {
+        "segm_ap50": 0.0,
+        "segm_ap50_95": 0.0
+      },
+      "bevel_gear_spindle": {
+        "segm_ap50": 0.0,
+        "segm_ap50_95": 0.0
+      },
+      "gearbox_housing": {
+        "segm_ap50": 0.0,
+        "segm_ap50_95": 0.0
+      },
+      "intermediate_gearbox": {
+        "segm_ap50": 0.0,
+        "segm_ap50_95": 0.0
+      },
+      "motor_housing": {
+        "segm_ap50": 0.0,
+        "segm_ap50_95": 0.0
+      },
+      "shaft": {
+        "segm_ap50": 0.0,
+        "segm_ap50_95": 0.0
+      },
+      "wheel_guard": {
+        "segm_ap50": 0.0,
+        "segm_ap50_95": 0.0
+      }
+    }
+  },
+  "git_commit": "e552ac6",
+  "timestamp_utc": "2026-07-06T21:04:12.548238+00:00"
+}

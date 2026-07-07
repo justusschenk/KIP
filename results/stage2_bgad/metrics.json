@@ -1,0 +1,12 @@
+{
+  "n_val": 8,
+  "n_good": 3,
+  "n_defect": 5,
+  "image_auroc": 0.8666666666666667,
+  "pixel_auroc": 0.6511686967488726,
+  "memory_patches": 5120,
+  "imgsz": 1024,
+  "crop": 256,
+  "fg_quantile": 0.98,
+  "ckpt": "results/results/yolo_runs/C_synth_pretrain_real_finetune/weights/best.pt"
+}

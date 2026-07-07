@@ -1,0 +1,14 @@
+{
+  "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.4",
+  "processor": "arm",
+  "machine": "arm64",
+  "torch_version": "2.11.0",
+  "mps_available": true,
+  "cuda_available": false,
+  "cuda_version": null,
+  "cuda_device_count": 0,
+  "ram_gb": 17.2,
+  "chip": "Apple M5",
+  "cuda_devices": []
+}

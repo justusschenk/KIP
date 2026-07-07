@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "run_id": "patchcore_fixed_augoff_seed42_20260707_081821",
+  "stage": 2,
+  "model": "patchcore",
+  "augmentation": false,
+  "seed": 42,
+  "smoke": true,
+  "device": "mps",
+  "kip_version": "0.1.0",
+  "split": {
+    "scheme": "fixed",
+    "n_folds": 1,
+    "test_set": "bgad_pooled"
+  },
+  "dataset": {
+    "n_images": 19,
+    "n_good": 8,
+    "n_defect": 11,
+    "missing_mask_policy": "normal",
+    "crop_failures": 0,
+    "work_size": 256,
+    "tile_size": 128
+  },
+  "metrics": {
+    "pooled": {
+      "image_auroc": 0.8,
+      "image_f1": 0.9090909085950413,
+      "image_f1_threshold": 9.755118745944928,
+      "pixel_auroc": 0.7496224674265907,
+      "pixel_aupro": 0.756558948733331,
+      "pixel_f1": null,
+      "dice": null,
+      "iou": null
+    },
+    "per_fold": [
+      {
+        "fold": "fixed",
+        "held_out_tools": [
+          "tool02",
+          "tool03",
+          "tool08",
+          "tool09",
+          "tool10",
+          "tool97",
+          "tool99"
+        ],
+        "n_test": 8,
+        "n_defect": 5,
+        "image_auroc": 0.8
+      }
+    ]
+  },
+  "git_commit": "e552ac6",
+  "timestamp_utc": "2026-07-07T08:18:21.429732+00:00"
+}

@@ -1,0 +1,4 @@
+run_id,stage,model,augmentation,seed,smoke,split_scheme,device,metric.bbox_map50,metric.bbox_map50_95,metric.segm_map50,metric.segm_map50_95,metric.segm_map75,metric.precision,metric.recall
+yolo_augon_20260706_210225,1,yolo,True,42,True,fixed,mps,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+yolo_augon_20260706_211009,1,yolo,True,42,True,fixed,mps,0.020082772836291764,0.014341829538719049,0.01932498867694145,0.014143001562199673,0.012221202668771452,0.058653846153846154,0.10147058823529412
+mask2former_augoff_20260706_211132,1,mask2former,False,42,True,fixed,cpu,0.0,0.0,0.0,0.0,0.0,0.0,0.0

@@ -1,0 +1,29 @@
+{
+  "n_images": 19,
+  "n_tools": 7,
+  "n_good": 8,
+  "n_defect": 11,
+  "n_unlabeled": 0,
+  "tools": [
+    "tool02",
+    "tool03",
+    "tool08",
+    "tool09",
+    "tool10",
+    "tool97",
+    "tool99"
+  ],
+  "per_split": {
+    "train": {
+      "n_images": 11,
+      "n_good": 5,
+      "n_defect": 6
+    },
+    "val": {
+      "n_images": 8,
+      "n_good": 3,
+      "n_defect": 5
+    }
+  },
+  "sha256": "fc3df3e7ee1ba37e"
+}

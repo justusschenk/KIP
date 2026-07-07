@@ -1,0 +1,104 @@
+{
+  "schema_version": "1.0",
+  "run_id": "padim_loto_augoff_seed42_20260707_083045",
+  "stage": 2,
+  "model": "padim",
+  "augmentation": false,
+  "seed": 42,
+  "smoke": true,
+  "device": "mps",
+  "kip_version": "0.1.0",
+  "split": {
+    "scheme": "loto",
+    "n_folds": 7,
+    "test_set": "bgad_pooled"
+  },
+  "dataset": {
+    "n_images": 19,
+    "n_good": 8,
+    "n_defect": 11,
+    "missing_mask_policy": "normal",
+    "crop_failures": 0,
+    "work_size": 256,
+    "tile_size": 128
+  },
+  "metrics": {
+    "pooled": {
+      "image_auroc": 0.27272727272727276,
+      "image_f1": 0.7333333328688889,
+      "image_f1_threshold": 148.2901135668636,
+      "pixel_auroc": 0.5506818775131125,
+      "pixel_aupro": 0.7767652067608528,
+      "pixel_f1": null,
+      "dice": null,
+      "iou": null
+    },
+    "per_fold": [
+      {
+        "fold": "loto_tool02",
+        "held_out_tools": [
+          "tool02"
+        ],
+        "n_test": 7,
+        "n_defect": 4,
+        "image_auroc": 0.33333333333333337
+      },
+      {
+        "fold": "loto_tool03",
+        "held_out_tools": [
+          "tool03"
+        ],
+        "n_test": 1,
+        "n_defect": 1,
+        "image_auroc": null
+      },
+      {
+        "fold": "loto_tool08",
+        "held_out_tools": [
+          "tool08"
+        ],
+        "n_test": 2,
+        "n_defect": 2,
+        "image_auroc": null
+      },
+      {
+        "fold": "loto_tool09",
+        "held_out_tools": [
+          "tool09"
+        ],
+        "n_test": 2,
+        "n_defect": 2,
+        "image_auroc": null
+      },
+      {
+        "fold": "loto_tool10",
+        "held_out_tools": [
+          "tool10"
+        ],
+        "n_test": 2,
+        "n_defect": 2,
+        "image_auroc": null
+      },
+      {
+        "fold": "loto_tool97",
+        "held_out_tools": [
+          "tool97"
+        ],
+        "n_test": 3,
+        "n_defect": 0,
+        "image_auroc": null
+      },
+      {
+        "fold": "loto_tool99",
+        "held_out_tools": [
+          "tool99"
+        ],
+        "n_test": 2,
+        "n_defect": 0,
+        "image_auroc": null
+      }
+    ]
+  },
+  "git_commit": "e552ac6",
+  "timestamp_utc": "2026-07-07T08:30:45.185173+00:00"
+}

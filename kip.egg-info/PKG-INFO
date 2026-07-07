@@ -1,0 +1,24 @@
+Metadata-Version: 2.4
+Name: kip
+Version: 0.1.0
+Summary: KIP — Visual Inspection Benchmark: Stage-1 (detection) + Stage-2 (anomaly).
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: torch>=2.3
+Requires-Dist: torchvision>=0.18
+Requires-Dist: numpy<3,>=1.26
+Requires-Dist: pandas>=2.2
+Requires-Dist: opencv-python>=4.9
+Requires-Dist: albumentations>=1.4
+Requires-Dist: Pillow>=10.0
+Requires-Dist: scikit-learn>=1.5
+Requires-Dist: scikit-image>=0.25
+Requires-Dist: matplotlib>=3.9
+Requires-Dist: seaborn>=0.13
+Requires-Dist: tqdm>=4.66
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: pycocotools>=2.0.8
+Requires-Dist: ultralytics>=8.3
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"

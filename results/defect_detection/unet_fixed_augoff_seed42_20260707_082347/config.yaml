@@ -1,0 +1,21 @@
+method: unet
+split: fixed
+augmentation: false
+epochs: 3
+batch: 8
+lr: 0.001
+tile_size: 128
+d_reduced: 100
+coreset_ratio: 0.1
+loss: bce_dice
+device: mps
+seed: 42
+smoke: true
+fg_quantile: 0.98
+crop_fallback: best-box
+tiling:
+  tile_size: 576
+  overlap: 0.25
+  white_thresh: 240
+  white_frac: 0.95
+  min_fg_coverage: 0.99

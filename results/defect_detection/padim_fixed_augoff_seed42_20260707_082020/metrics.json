@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "run_id": "padim_fixed_augoff_seed42_20260707_082020",
+  "stage": 2,
+  "model": "padim",
+  "augmentation": false,
+  "seed": 42,
+  "smoke": true,
+  "device": "mps",
+  "kip_version": "0.1.0",
+  "split": {
+    "scheme": "fixed",
+    "n_folds": 1,
+    "test_set": "bgad_pooled"
+  },
+  "dataset": {
+    "n_images": 19,
+    "n_good": 8,
+    "n_defect": 11,
+    "missing_mask_policy": "normal",
+    "crop_failures": 0,
+    "work_size": 256,
+    "tile_size": 128
+  },
+  "metrics": {
+    "pooled": {
+      "image_auroc": 0.4666666666666667,
+      "image_f1": 0.8333333328472221,
+      "image_f1_threshold": 883.390479302553,
+      "pixel_auroc": 0.6656878813160054,
+      "pixel_aupro": 0.7974010338426064,
+      "pixel_f1": null,
+      "dice": null,
+      "iou": null
+    },
+    "per_fold": [
+      {
+        "fold": "fixed",
+        "held_out_tools": [
+          "tool02",
+          "tool03",
+          "tool08",
+          "tool09",
+          "tool10",
+          "tool97",
+          "tool99"
+        ],
+        "n_test": 8,
+        "n_defect": 5,
+        "image_auroc": 0.4666666666666667
+      }
+    ]
+  },
+  "git_commit": "e552ac6",
+  "timestamp_utc": "2026-07-07T08:20:20.349408+00:00"
+}

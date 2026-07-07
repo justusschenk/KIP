@@ -1,0 +1,141 @@
+================================================================================
+ERGEBNIS-ANALYSE — KIP AP3: Defekterkennung (Anomalie / PatchCore)
+Zweite Stufe der Inspektionspipeline (Komponenten-Crop -> Anomalie-Score)
+================================================================================
+Erstellt: 2026-07-02
+Datenquelle: kip_train.py (AP3-Block), files/program_documentation.txt (§3, §7),
+             files/framework_overview.txt (AP3)
+
+Hinweis: Dieses Dokument ist das Gegenstück zu ergebnisse_analyse.txt (AP2,
+Komponentendetektion) und beschreibt die ZWEITE Pipeline-Stufe. Es ist bewusst
+transparent gehalten: Zum aktuellen Stand liegen KEINE quantitativen Defekt-
+Metriken vor, da der dafuer erforderliche Datensatz C fehlt (siehe Abschnitt 3).
+Die Struktur ist so gewaehlt, dass die Zahlen nach Eintreffen von Datensatz C
+nur noch eingesetzt werden muessen.
+
+
+--------------------------------------------------------------------------------
+1. EXPERIMENTAUFBAU
+--------------------------------------------------------------------------------
+Aufgabe : Binaere Defekterkennung pro Komponente (OK / DEFEKT) als zweite Stufe
+          nach der YOLO-Instanzsegmentierung (AP2).
+Ansatz  : Unsupervised Anomalieerkennung mit PatchCore (Backbone ResNet-18,
+          Feature-Layer layer2+layer3, Coreset-Sampling-Ratio 0.1). Bei nicht
+          verfuegbarer anomalib-Installation greift ein torchvision-Fallback
+          (ResNet-18 Feature-Extractor + Nearest-Neighbour-Scoring auf einem
+          10%-Coreset der Patch-Features). Quelle: kip_train.py, train_patchcore().
+Prinzip : Es werden ausschliesslich "gute" (defektfreie) Komponenten-Crops zum
+          Aufbau der Feature-Memory-Bank verwendet. Zur Inferenzzeit wird der
+          Abstand eines Patches zur Bank als Anomalie-Score interpretiert; ein
+          Schwellwert trennt OK von DEFEKT.
+Gruende fuer die Anomalie-Strategie (statt Klassifikator): sehr wenige bis keine
+          Defektbilder vorhanden -> ein ueberwachter Defektklassifikator ist
+          nicht trainierbar (framework_overview.txt, AP3).
+
+
+--------------------------------------------------------------------------------
+2. DATENGRUNDLAGE DER ZWEITEN STUFE (welche Bilder gehoeren hierher?)
+--------------------------------------------------------------------------------
+2.1 TRAININGSDATEN (nur "gute" Teile, fuer die Memory-Bank)
+    Quelle : Keine separaten Dateien im Repo. Die "normalen" Crops werden zur
+             Laufzeit vom trainierten YOLO (AP2, Modell C) aus
+             object_segmentation_real_v3_1088/images/train herausgeschnitten
+             (extract_component_crops()) und nach
+             data/patchcore_normal/<klasse>/ geschrieben.
+    Stand  : Aktuell nur fuer die Klasse motor_housing vorgesehen
+             (class_id = CLASS_NAMES.index("motor_housing"), max_crops=80).
+    Status : NICHT ERZEUGT. data/patchcore_normal/ existiert nicht, models/ ist
+             leer (kein patchcore_bank.pt, kein patchcore_resnet18.onnx).
+             => Der AP3-Block wurde im Server-Lauf nicht ausgefuehrt
+                (--skip-patchcore oder Abbruch vor AP3).
+
+2.2 TESTDATEN (Defekte, fuer die eigentliche Guetebewertung)
+    Quelle : Datensatz C — Nahaufnahmen mit Defekten (Kratzer, Abplatzungen,
+             Verschleiss) inkl. Defektlabels (framework_overview.txt).
+    Status : FEHLT VOLLSTAENDIG. Nicht im Repo vorhanden; in
+             program_documentation.txt §7 explizit als offen markiert
+             ("Datensatz C ... FEHLT BISHER"). load_dataset_c() ist ein Stub.
+
+2.3 ABGRENZUNG — WICHTIG ZUR VERMEIDUNG EINER VERWECHSLUNG
+    Die Dateien *_bevel_gear_spindle_closeup_*.jpg in
+    object_segmentation_real_v3_1088 (58 in train, 4 in val, 9 in test) sind
+    KEINE Defektdaten. Es sind Nahaufnahmen der KOMPONENTE bevel_gear_spindle;
+    ihre Labels sind normale Klassenlabels (class id 3 = bevel_gear_spindle).
+    Sie gehoeren damit zur ERSTEN Stufe (Segmentierung, AP2) und sind bereits in
+    ergebnisse_analyse.txt beruecksichtigt. Fuer die Defekterkennung (AP3) sind
+    sie nicht relevant.
+
+
+--------------------------------------------------------------------------------
+3. ERGEBNISSE
+--------------------------------------------------------------------------------
+Es liegen zum Stichtag KEINE quantitativen Ergebnisse fuer die Defekterkennung
+vor. Grund: ohne Datensatz C existiert kein gelabeltes Defekt-Testset, daher
+sind die vorgesehenen Zielmetriken (framework_overview.txt, Guetemetriken) nicht
+berechenbar:
+
+  Zielmetrik (geplant)     Primaer          Sekundaer        Nebenbedingung
+  -----------------------  ---------------  ---------------  -------------------
+  Defekterkennung          F1 (binaer)      ROC-AUC / AUROC  Recall >= Precision
+                                                             (Miss < False Alarm)
+
+Was aktuell belegbar ist (qualitativ / methodisch):
+  (1) Die Pipeline-Verzweigung ist implementiert: YOLO-Detektion -> Crop pro
+      Komponente -> PatchCore-Forward -> Score-Threshold -> Overlay
+      (gruen=OK, rot=DEFEKT). Siehe scripts/jetson_inference.py,
+      program_documentation.txt §4.
+  (2) Der Schwellwert ist datenabhaengig und muss einmalig kalibriert werden
+      (--calibrate-threshold gibt mean+3*std der OK-Crops als Empfehlung aus).
+  (3) Ein ONNX-Export-Pfad fuer PatchCore (dynamic batch) ist vorbereitet
+      (export_patchcore()), aktuell mangels Bank-Artefakt aber ungenutzt.
+
+Interpretation: Die zweite Stufe ist als lauffaehige Methodik vorhanden, aber
+noch nicht evaluiert. Die in ergebnisse_analyse.txt berichteten Zahlen
+(exp_metrics.json) betreffen ausschliesslich AP2 (Komponentendetektion) und
+duerfen NICHT als Defekterkennungs-Ergebnis gelesen werden.
+
+
+--------------------------------------------------------------------------------
+4. GEPLANTE ABBILDUNGEN / TABELLEN (sobald Datensatz C vorliegt)
+--------------------------------------------------------------------------------
+4.1 Haupttabelle Defekterkennung
+    Inhalt : F1(binaer), AUROC, Precision, Recall je Komponentenklasse + Makro.
+    Overleaf:
+      \label{tab:defect_results}
+      Caption: "Defekterkennung (PatchCore) auf Datensatz C. Binaeres F1 und
+      AUROC je Komponente; Schwellwert per OK-Crop-Kalibrierung."
+
+4.2 ROC-/PR-Kurve der Anomalie-Scores
+    Overleaf:
+      \label{fig:defect_roc}
+      Caption: "ROC- und Precision-Recall-Kurve der PatchCore-Anomalie-Scores;
+      markiert ist der gewaehlte Betriebspunkt (Recall >= Precision)."
+
+4.3 Score-Verteilung OK vs. DEFEKT
+    Overleaf:
+      \label{fig:defect_score_hist}
+      Caption: "Verteilung der Anomalie-Scores fuer OK- und Defekt-Crops; die
+      Trennschaerfe motiviert die Schwellwertwahl (mean+3sigma)."
+
+4.4 Qualitative Anomalie-Heatmaps
+    Overleaf:
+      \label{fig:defect_heatmap}
+      Caption: "PatchCore-Anomalie-Heatmaps auf Komponenten-Crops: lokalisierte
+      Defektregionen (Kratzer/Abplatzung) gegenueber defektfreiem Referenzteil."
+
+
+--------------------------------------------------------------------------------
+5. NAECHSTE SCHRITTE ZUM SCHLIESSEN DER LUECKE
+--------------------------------------------------------------------------------
+  (1) Datensatz C beschaffen/annotieren (OK vs. DEFEKT je Komponente).
+  (2) kip_train.py ohne --skip-patchcore laufen lassen -> erzeugt
+      data/patchcore_normal/... , models/patchcore_bank.pt,
+      models/patchcore_resnet18.onnx.
+  (3) load_dataset_c() befuellen, detect_defect() ueber das Defekt-Testset
+      evaluieren, Schwellwert per --calibrate-threshold festlegen.
+  (4) Vergleichspfad ergaenzen: fine-getunter Klassifikator (z.B. EfficientNet-B0)
+      als Baseline gegen PatchCore, sobald genug Defektbilder vorliegen.
+
+================================================================================
+ENDE
+================================================================================
